@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名刺取込アプリ</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .camera-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .camera-input {
+            display: none;
+        }
+
+        .camera-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .camera-button:active {
+            transform: scale(0.95);
+        }
+
+        .preview-section {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .progress {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-section {
+            display: none;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .history-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .history-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .history-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .history-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .history-item-company {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📇 名刺取込アプリ</h1>
+            <p>名刺を撮影してデータ化</p>
+        </div>
+
+        <div class="content">
+            <div class="camera-section">
+                <input type="file" id="cameraInput" class="camera-input" accept="image/*" capture="environment">
+                <label for="cameraInput" class="camera-button">📷 名刺を撮影</label>
+            </div>
+
+            <div class="preview-section" id="previewSection">
+                <img id="previewImage" class="preview-image" alt="Preview">
+            </div>
+
+            <div class="progress" id="progressSection">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">処理中...</div>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="result-section" id="resultSection">
+                <div class="form-group">
+                    <label>会社名</label>
+                    <input type="text" id="companyName" placeholder="株式会社〇〇">
+                </div>
+                <div class="form-group">
+                    <label>氏名</label>
+                    <input type="text" id="name" placeholder="山田 太郎">
+                </div>
+                <div class="form-group">
+                    <label>役職</label>
+                    <input type="text" id="position" placeholder="営業部長">
+                </div>
+                <div class="form-group">
+                    <label>電話番号</label>
+                    <input type="text" id="phone" placeholder="03-1234-5678">
+                </div>
+                <div class="form-group">
+                    <label>メールアドレス</label>
+                    <input type="email" id="email" placeholder="example@company.co.jp">
+                </div>
+                <div class="form-group">
+                    <label>住所</label>
+                    <input type="text" id="address" placeholder="東京都〇〇区...">
+                </div>
+                <div class="form-group">
+                    <label>Xアカウント</label>
+                    <input type="text" id="twitter" placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label>追加日時</label>
+                    <input type="text" id="addedDate" readonly>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="saveCard()">💾 保存</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">🔄 リセット</button>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <h2>保存済み名刺</h2>
+                    <button class="btn btn-primary" onclick="downloadCSV()" style="flex: none; padding: 8px 20px;">CSV出力</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">まだ名刺が保存されていません</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cardHistory = JSON.parse(localStorage.getItem('cardHistory') || '[]');
+        
+        // 初期表示
+        updateHistoryList();
+
+        // カメラ入力
+        document.getElementById('cameraInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.getElementById('previewImage');
+                img.src = event.target.result;
+                document.getElementById('previewSection').style.display = 'block';
+                
+                // OCR処理開始
+                processImage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function processImage(imageSrc) {
+            const progressSection = document.getElementById('progressSection');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            progressSection.style.display = 'block';
+            errorMessage.style.display = 'none';
+            
+            try {
+                progressText.textContent = 'OCR初期化中...';
+                
+                const worker = await Tesseract.createWorker('jpn+eng', {
+                    logger: m => {
+                        console.log(m);
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            progressFill.style.width = progress + '%';
+                            progressText.textContent = `OCR処理中... ${progress}%`;
+                        } else if (m.status === 'loading tesseract core' || m.status === 'initializing tesseract' || m.status === 'loading language traineddata') {
+                            progressText.textContent = `${m.status}...`;
+                        }
+                    },
+                    errorHandler: err => console.error(err)
+                });
+
+                const { data: { text } } = await worker.recognize(imageSrc);
+                await worker.terminate();
+
+                progressText.textContent = 'データ抽出中...';
+                
+                // テキストから情報抽出
+                const cardData = extractCardInfo(text);
+                
+                // フォームに反映
+                document.getElementById('companyName').value = cardData.companyName;
+                document.getElementById('name').value = cardData.name;
+                document.getElementById('position').value = cardData.position;
+                document.getElementById('phone').value = cardData.phone;
+                document.getElementById('email').value = cardData.email;
+                document.getElementById('address').value = cardData.address;
+                document.getElementById('twitter').value = cardData.twitter;
+                document.getElementById('addedDate').value = new Date().toLocaleString('ja-JP');
+
+                progressSection.style.display = 'none';
+                document.getElementById('resultSection').style.display = 'block';
+
+            } catch (error) {
+                console.error(error);
+                errorMessage.textContent = 'OCR処理中にエラーが発生しました。もう一度お試しください。';
+                errorMessage.style.display = 'block';
+                progressSection.style.display = 'none';
+            }
+        }
+
+        function extractCardInfo(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            const cardData = {
+                companyName: '',
+                name: '',
+                position: '',
+                phone: '',
+                email: '',
+                address: '',
+                twitter: ''
+            };
+
+            // メールアドレス抽出
+            const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            if (emailMatch) cardData.email = emailMatch[0];
+
+            // 電話番号抽出（複数パターン）
+            const phoneMatch = text.match(/(?:0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4}|0\d{9,10})/);
+            if (phoneMatch) cardData.phone = phoneMatch[0];
+
+            // Xアカウント抽出
+            const twitterMatch = text.match(/@[a-zA-Z0-9_]+/);
+            if (twitterMatch) cardData.twitter = twitterMatch[0];
+
+            // 住所抽出（都道府県から始まる）
+            const addressMatch = text.match(/[都道府県][^）\n]*/);
+            if (addressMatch) cardData.address = addressMatch[0].trim();
+
+            // 会社名抽出（株式会社、有限会社など）
+            const companyMatch = text.match(/(?:株式会社|有限会社|合同会社|一般社団法人|公益財団法人)[^\n]*/);
+            if (companyMatch) {
+                cardData.companyName = companyMatch[0].trim();
+            } else if (lines.length > 0) {
+                // 会社名が見つからない場合は最初の行を会社名として使用
+                cardData.companyName = lines[0].trim();
+            }
+
+            // 役職抽出
+            const positionKeywords = ['社長', '取締役', '部長', '課長', '係長', '主任', '代表', 'CEO', 'CTO', 'CFO', 'マネージャー', 'リーダー'];
+            for (const line of lines) {
+                for (const keyword of positionKeywords) {
+                    if (line.includes(keyword)) {
+                        cardData.position = line.trim();
+                        break;
+                    }
+                }
+                if (cardData.position) break;
+            }
+
+            // 名前抽出（ひらがな・カタカナ・漢字で2-5文字のスペース区切り）
+            const nameMatch = text.match(/[ぁ-んァ-ヶー一-龥]{1,5}[\s　]+[ぁ-んァ-ヶー一-龥]{1,5}/);
+            if (nameMatch) {
+                cardData.name = nameMatch[0].replace(/[\s　]+/, ' ').trim();
+            }
+
+            return cardData;
+        }
+
+        function saveCard() {
+            const card = {
+                companyName: document.getElementById('companyName').value,
+                name: document.getElementById('name').value,
+                position: document.getElementById('position').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                address: document.getElementById('address').value,
+                twitter: document.getElementById('twitter').value,
+                addedDate: document.getElementById('addedDate').value
+            };
+
+            cardHistory.push(card);
+            localStorage.setItem('cardHistory', JSON.stringify(cardHistory));
+            
+            updateHistoryList();
+            resetForm();
+            
+            alert('名刺を保存しました！');
+        }
+
+        function resetForm() {
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('cameraInput').value = '';
+            
+            document.getElementById('companyName').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('position').value = '';
+            document.getElementById('phone').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('address').value = '';
+            document.getElementById('twitter').value = '';
+        }
+
+        function updateHistoryList() {
+            const historyList = document.getElementById('historyList');
+            
+            if (cardHistory.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">まだ名刺が保存されていません</div>';
+                return;
+            }
+
+            historyList.innerHTML = cardHistory.map((card, index) => `
+                <div class="history-item">
+                    <div class="history-item-name">${card.name || '名前なし'}</div>
+                    <div class="history-item-company">${card.companyName || '会社名なし'} ${card.position ? '・ ' + card.position : ''}</div>
+                </div>
+            `).reverse().join('');
+        }
+
+        function downloadCSV() {
+            if (cardHistory.length === 0) {
+                alert('保存された名刺がありません');
+                return;
+            }
+
+            const headers = ['会社名', '氏名', '役職', '電話番号', 'メールアドレス', '住所', 'Xアカウント', '追加日時'];
+            const csvContent = [
+                headers.join(','),
+                ...cardHistory.map(card => [
+                    escapeCSV(card.companyName),
+                    escapeCSV(card.name),
+                    escapeCSV(card.position),
+                    escapeCSV(card.phone),
+                    escapeCSV(card.email),
+                    escapeCSV(card.address),
+                    escapeCSV(card.twitter),
+                    escapeCSV(card.addedDate)
+                ].join(','))
+            ].join('\n');
+
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `名刺データ_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function escapeCSV(str) {
+            if (!str) return '';
+            str = String(str);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+    </script>
+</body>
+</html>
